@@ -1,0 +1,7 @@
+torch
+torchvision
+opencv-python-headless
+fastapi
+uvicorn
+python-multipart
+git+https://github.com/xinntao/Real-ESRGAN.git
