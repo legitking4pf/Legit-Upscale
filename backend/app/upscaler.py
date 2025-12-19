@@ -1,41 +1,35 @@
-import cv2
-import torch
-from realesrgan import RealESRGAN
-from .config import DEVICE, MODEL_WEIGHTS, UPSCALE_FACTOR, INPUT_DIR, OUTPUT_DIR
+# backend/app/upscaler.py
+
 import os
+from config import DEVICE, MODEL_WEIGHTS, OUTPUT_DIR
+from PIL import Image
+from basicsr.archs.rrdbnet_arch import RRDBNet
+from realesrgan import RealESRGAN
 import uuid
 
 class Upscaler:
-def __init__(self):
-# Load the model once
+def __init__(self, scale_factor: int = 4):
+self.scale_factor = scale_factor
 self.device = DEVICE
-self.model = RealESRGAN(self.device, scale = UPSCALE_FACTOR)
-self.model.load_weights(MODEL_WEIGHTS)
+self.model = self.load_model()
 
-def upscale(self, image_path: str) -> str:
-"""
-        Takes an input image path, upscales it, saves result in OUTPUT_DIR
-        Returns the output path
-        """
-# Load input image
-image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-if image is None:
-raise ValueError(f"Failed to read image: {
-  image_path
-}")
-image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+def load_model(self):
+model = RRDBNet(
+  num_in_ch = 3, num_out_ch = 3, num_feat = 64, num_block = 23, num_grow_ch = 32, scale = self.scale_factor
+)
+upscaler = RealESRGAN(model, scale = self.scale_factor)
+upscaler.load_weights(MODEL_WEIGHTS, download = False)
+upscaler.model.to(self.device)
+upscaler.model.half() # Use FP16 to save memory
+upscaler.model.eval()
+return upscaler
 
-# Run AI inference
-with torch.no_grad():
-upscaled = self.model.predict(image)
-
-# Convert back to BGR for OpenCV
-upscaled = cv2.cvtColor(upscaled, cv2.COLOR_RGB2BGR)
-
-# Save result
-filename = f" {
-  uuid.uuid4()}_8k.png"
-output_path = os.path.join(OUTPUT_DIR, filename)
-cv2.imwrite(output_path, upscaled)
-
+def upscale_image(self, image_path: str) -> str:
+image = Image.open(image_path).convert("RGB")
+output_filename = f" {
+  uuid.uuid4()}_upscaled.png"
+output_path = os.path.join(OUTPUT_DIR, output_filename)
+os.makedirs(OUTPUT_DIR, exist_ok = True)
+result = self.model.enhance(image)
+result.save(output_path)
 return output_path
